@@ -187,6 +187,6 @@ MIT License - See LICENSE file
 
 ---
 
-## Author
+## Author:  TAURUS INDUSTRIES
 
 Building real systems. No simulations. No shortcuts.
