@@ -58,6 +58,15 @@ class ConnectionState:
 
 
 @dataclass
+class CSIPresenceState:
+    """WiFi CSI presence detection state."""
+    state: str = "CLEAR"  # CLEAR, PRESENCE, MOVEMENT, APPROACHING, RETREATING
+    confidence: float = 0.0
+    variance: float = 0.0
+    duration_ms: int = 0
+
+
+@dataclass
 class VehicleState:
     """
     Complete state representation of a single vehicle.
@@ -70,6 +79,7 @@ class VehicleState:
     velocity: Velocity = field(default_factory=Velocity)
     battery: BatteryState = field(default_factory=BatteryState)
     connection: ConnectionState = field(default_factory=ConnectionState)
+    csi_presence: CSIPresenceState = field(default_factory=CSIPresenceState)
 
     # Operational state
     mode: str = "STANDBY"
@@ -132,6 +142,12 @@ class VehicleState:
                 "ir_left": self.ir_left,
                 "ir_right": self.ir_right,
                 "ultrasonic_cm": self.ultrasonic_cm,
+            },
+            "csi_presence": {
+                "state": self.csi_presence.state,
+                "confidence": self.csi_presence.confidence,
+                "variance": self.csi_presence.variance,
+                "duration_ms": self.csi_presence.duration_ms,
             },
             "system": {
                 "uptime_ms": self.uptime_ms,
@@ -223,6 +239,14 @@ class DigitalTwinManager:
                 state.ir_left = sensors.get("ir_left", state.ir_left)
                 state.ir_right = sensors.get("ir_right", state.ir_right)
                 state.ultrasonic_cm = sensors.get("ultrasonic_cm", state.ultrasonic_cm)
+
+            # Update CSI presence detection
+            if "csi_presence" in payload:
+                csi = payload["csi_presence"]
+                state.csi_presence.state = csi.get("state", state.csi_presence.state)
+                state.csi_presence.confidence = csi.get("confidence", state.csi_presence.confidence)
+                state.csi_presence.variance = csi.get("variance", state.csi_presence.variance)
+                state.csi_presence.duration_ms = csi.get("duration_ms", state.csi_presence.duration_ms)
 
             # Update system state
             if "system" in payload:

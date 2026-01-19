@@ -194,6 +194,17 @@ async def send_command(vehicle_id: str, request: CommandRequest):
             detail=f"Invalid command type: {request.command}"
         )
 
+    # If simulator is running and this is the simulated vehicle, send to simulator
+    sim = get_simulator()
+    if sim._running and vehicle_id == sim.config.vehicle_id:
+        sim.handle_command(request.command, request.params)
+        return CommandResponse(
+            command_id=f"sim_{vehicle_id}",
+            vehicle_id=vehicle_id,
+            command=request.command,
+            status="SENT",
+        )
+
     try:
         record = await dispatcher.dispatch(
             vehicle_id=vehicle_id,
@@ -216,6 +227,17 @@ async def send_command(vehicle_id: str, request: CommandRequest):
 @app.post("/api/vehicles/{vehicle_id}/stop")
 async def emergency_stop(vehicle_id: str):
     """Emergency stop a vehicle."""
+    # If simulator is running, send E_STOP to it
+    sim = get_simulator()
+    if sim._running and vehicle_id == sim.config.vehicle_id:
+        sim.handle_command("SET_MODE", {"mode": "E_STOP"})
+        return CommandResponse(
+            command_id=f"sim_estop_{vehicle_id}",
+            vehicle_id=vehicle_id,
+            command="E_STOP",
+            status="SENT",
+        )
+
     dispatcher = get_command_dispatcher()
 
     try:
