@@ -1,0 +1,21 @@
+{
+  "name": "sasha-mission-control",
+  "version": "0.1.0",
+  "description": "SASHA - AI Mission Control Assistant for NEXUS TAURUS OPERATIONS",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "swarm": "npx claude-flow@alpha swarm",
+    "hive": "npx claude-flow@alpha hive-mind"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "ws": "^8.16.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "claude-flow": "^2.0.0-alpha"
+  }
+}

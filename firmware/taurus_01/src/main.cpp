@@ -14,6 +14,7 @@
 #include "motors.h"
 #include "sensors.h"
 #include "comms.h"
+#include "csi_presence.h"
 
 // =============================================================================
 // Global Objects
@@ -22,6 +23,7 @@
 MotorController motors;
 SensorManager sensors;
 CommsManager comms;
+CSIPresenceDetector csiDetector;
 
 // =============================================================================
 // State
@@ -153,6 +155,22 @@ void sendTelemetry() {
     sensorsObj["ir_right"] = sensorData.irRight;
     sensorsObj["ultrasonic_cm"] = sensorData.ultrasonicCm;
 
+    // CSI Presence Detection
+    PresenceResult presence = csiDetector.getPresence();
+    JsonObject csiObj = payload["csi_presence"].to<JsonObject>();
+    const char* presenceState = "CLEAR";
+    switch (presence.state) {
+        case PresenceState::CLEAR: presenceState = "CLEAR"; break;
+        case PresenceState::PRESENCE: presenceState = "PRESENCE"; break;
+        case PresenceState::MOVEMENT: presenceState = "MOVEMENT"; break;
+        case PresenceState::APPROACHING: presenceState = "APPROACHING"; break;
+        case PresenceState::RETREATING: presenceState = "RETREATING"; break;
+    }
+    csiObj["state"] = presenceState;
+    csiObj["confidence"] = presence.confidence;
+    csiObj["variance"] = presence.variance;
+    csiObj["duration_ms"] = presence.duration;
+
     // System
     JsonObject system = payload["system"].to<JsonObject>();
 
@@ -202,6 +220,22 @@ void performSafetyChecks() {
         }
     }
 
+    // CSI Presence Detection alerts
+    static PresenceState lastPresenceState = PresenceState::CLEAR;
+    PresenceResult presence = csiDetector.getPresence();
+
+    if (presence.state != lastPresenceState) {
+        lastPresenceState = presence.state;
+
+        if (presence.state == PresenceState::APPROACHING) {
+            DEBUG_PRINTLN("[CSI] Human approaching detected!");
+            comms.sendError(200, "Human approaching - CSI detection", "WARNING");
+        } else if (presence.state == PresenceState::MOVEMENT) {
+            DEBUG_PRINTLN("[CSI] Movement detected nearby");
+            comms.sendError(201, "Movement detected nearby - CSI", "INFO");
+        }
+    }
+
     // Low battery warning
     const SensorData& data = sensors.getData();
     if (data.batteryPercent < 20 && data.batteryPercent > 0) {
@@ -246,6 +280,14 @@ void setup() {
     comms.setCommandCallback(handleCommand);
     comms.begin();
 
+    // Initialize CSI presence detection (after WiFi is connected)
+    DEBUG_PRINTLN("[MAIN] Initializing CSI presence detection...");
+    if (csiDetector.begin()) {
+        DEBUG_PRINTLN("[MAIN] CSI presence detection active");
+    } else {
+        DEBUG_PRINTLN("[MAIN] CSI presence detection failed - continuing without");
+    }
+
     // Initial state
     state.mode = VehicleMode::STANDBY;
     state.armed = false;
@@ -263,6 +305,9 @@ void loop() {
 
     // Update sensors
     sensors.update();
+
+    // Update CSI presence detection
+    csiDetector.update();
 
     // Safety checks
     performSafetyChecks();

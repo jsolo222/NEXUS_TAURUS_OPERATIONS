@@ -14,9 +14,45 @@ NEXUS TAURUS OPERATIONS (NTO) is a production-grade robotics operations platform
 - **Digital twin synchronization** mirroring actual vehicle state
 - **Command and control** with verification and acknowledgment
 - **Mission logging** with full telemetry persistence
+- **AI-powered mission control** via SASHA (callsign: Ghost)
 - **Extensible architecture** for multi-vehicle fleet operations
 
 This is not a simulation. This is real hardware operations infrastructure.
+
+---
+
+## AI Mission Control: SASHA
+
+**SASHA** (Situational Awareness System for Hazard Assessment), callsign **"Ghost"**, is the AI backbone of NEXUS TAURUS operations.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    SASHA "Ghost" - AI Mission Control                   │
+│                                                                         │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                   claude-flow (Hive Mind)                       │   │
+│   │   ┌───────────┐                                                 │   │
+│   │   │   GHOST   │ ◄── Master Coordinator                          │   │
+│   │   │  (Queen)  │                                                 │   │
+│   │   └─────┬─────┘                                                 │   │
+│   │   ┌─────┴─────────────────────────────────────────────────┐     │   │
+│   │   ▼              ▼              ▼              ▼          │     │   │
+│   │ ┌──────┐     ┌──────┐     ┌──────┐     ┌──────────┐       │     │   │
+│   │ │Safety│     │ Nav  │     │Telem │     │ Weather  │       │     │   │
+│   │ │Watch │     │Agent │     │Analyst│    │  Watch   │       │     │   │
+│   │ └──────┘     └──────┘     └──────┘     └──────────┘       │     │   │
+│   └───────────────────────────────────────────────────────────┘     │   │
+│                                                                     │   │
+│   Data Sources: NASA-MCP (weather/imagery) │ Ollama (local LLM)     │   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Capabilities
+- **Real-time monitoring** of all vehicle telemetry
+- **Anomaly detection** and predictive alerts
+- **Weather integration** via NASA APIs
+- **Multi-agent orchestration** via claude-flow
+- **Natural language** status reports and commands
 
 ---
 

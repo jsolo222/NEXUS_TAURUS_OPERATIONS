@@ -1,0 +1,21 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/mcp.json",
+  "mcpServers": {
+    "nasa": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/nasa-mcp-server@latest"],
+      "env": {
+        "NASA_API_KEY": "${NASA_API_KEY}"
+      },
+      "description": "NASA data access - weather, imagery, NEO tracking, space weather"
+    },
+    "nexus-taurus": {
+      "command": "node",
+      "args": ["./mcp-servers/nto-server.js"],
+      "env": {
+        "NTO_API_URL": "${NTO_API_URL}"
+      },
+      "description": "NEXUS TAURUS Operations - vehicle telemetry and commands"
+    }
+  }
+}
