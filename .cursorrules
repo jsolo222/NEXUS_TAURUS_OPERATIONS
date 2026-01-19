@@ -1,0 +1,60 @@
+# Cursor AI Rules for NEXUS TAURUS OPERATIONS
+
+## Project Context
+This is a REAL robotics operations platform controlling REAL hardware (Yahboom G1 Tank with ESP32-S3). Not a simulation.
+
+## Critical Safety Rules
+1. NEVER send ARM or MOVE commands without explicit user confirmation
+2. NEVER commit API keys, passwords, or WiFi credentials
+3. NEVER modify historical telemetry data (append-only)
+4. ALWAYS include safety checks in firmware code
+5. ALWAYS handle connection loss gracefully
+
+## Tech Stack
+- Firmware: C++ / Arduino / PlatformIO (ESP32-S3)
+- Backend: Python 3.11+ / FastAPI
+- Frontend: React / TypeScript / Vite / Tailwind
+- AI: Node.js / claude-flow
+- Database: SQLite
+- Protocol: WebSocket / JSON
+
+## Code Standards
+- Python: Type hints required, follow PEP 8
+- TypeScript: Strict mode, no `any` types
+- C++: Follow existing style in firmware/
+- All business logic needs tests
+- Conventional commit messages
+
+## File Locations
+- Vehicle firmware: `firmware/taurus_01/`
+- Ground station API: `ground_station/backend/nto_server/`
+- Frontend UI: `ground_station/frontend/src/`
+- AI assistant: `sasha/`
+- Protocol definitions: `protocols/messages.py`
+- Hardware docs: `docs/hardware/`
+
+## Key Files to Understand
+1. `CLAUDE.md` - Full briefing document
+2. `protocols/messages.py` - Telemetry/command schemas
+3. `firmware/taurus_01/include/config.h` - Hardware config
+4. `ground_station/backend/nto_server/digital_twin.py` - State management
+5. `sasha/claude-flow.config.js` - AI agent configuration
+
+## When Modifying Firmware
+- Test on hardware before committing
+- Ensure WiFi reconnection is handled
+- Maintain heartbeat protocol
+- Keep safety checks (obstacle, battery, connection)
+
+## When Modifying Backend
+- Maintain WebSocket compatibility with firmware
+- Don't break telemetry schema without updating firmware
+- Keep digital twin synchronized with actual state
+
+## When Modifying Frontend
+- Real-time updates via WebSocket
+- Show connection status clearly
+- Emergency stop must always be visible and functional
+
+## Author
+TAURUS INDUSTRIES
