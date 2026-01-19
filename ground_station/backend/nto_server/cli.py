@@ -5,6 +5,7 @@ Command-line interface for the NTO Ground Station server.
 """
 
 import argparse
+import os
 import uvicorn
 
 
@@ -41,15 +42,22 @@ def main() -> None:
         choices=["debug", "info", "warning", "error"],
         help="Log level (default: info)"
     )
+    run_parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Start telemetry simulator (no hardware needed)"
+    )
 
     args = parser.parse_args()
 
     if args.command == "run":
+        sim_status = "ENABLED (no hardware needed)" if args.simulate else "disabled"
         print(f"""
 ╔═══════════════════════════════════════════════════════════════╗
 ║           NEXUS TAURUS OPERATIONS - Ground Station            ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║  Server starting on http://{args.host}:{args.port}                      ║
+║  Simulator: {sim_status:<49}║
 ║                                                               ║
 ║  Endpoints:                                                   ║
 ║    REST API:     http://{args.host}:{args.port}/api                     ║
@@ -58,6 +66,10 @@ def main() -> None:
 ║    API Docs:     http://{args.host}:{args.port}/docs                    ║
 ╚═══════════════════════════════════════════════════════════════╝
         """)
+
+        # Set environment variable for simulator
+        if args.simulate:
+            os.environ["NTO_SIMULATE"] = "1"
 
         uvicorn.run(
             "nto_server.app:app",

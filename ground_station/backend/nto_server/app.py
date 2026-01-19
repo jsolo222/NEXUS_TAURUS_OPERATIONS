@@ -9,6 +9,7 @@ FastAPI application providing:
 """
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -21,6 +22,7 @@ from .digital_twin import get_twin_manager
 from .telemetry import get_telemetry_server
 from .commands import get_command_dispatcher, CommandType
 from .storage import get_telemetry_store
+from .simulator import get_simulator
 
 # Configure structured logging
 structlog.configure(
@@ -49,9 +51,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Start health check loop
     health_task = asyncio.create_task(connection_health_loop())
 
+    # Start simulator if enabled
+    sim = None
+    if os.environ.get("NTO_SIMULATE") == "1":
+        sim = get_simulator()
+        await sim.start()
+        logger.info("simulator_auto_started")
+
     yield
 
     # Cleanup
+    if sim:
+        await sim.stop()
+
     health_task.cancel()
     try:
         await health_task
@@ -318,3 +330,31 @@ async def detailed_health():
         "known_vehicles": len(states),
         "connection_stats": stats,
     }
+
+
+# =============================================================================
+# Simulator Endpoints (Development Only)
+# =============================================================================
+
+@app.post("/api/simulator/start")
+async def start_simulator():
+    """Start the telemetry simulator for testing without hardware."""
+    sim = get_simulator()
+    await sim.start()
+    return {"status": "started", "vehicle_id": sim.config.vehicle_id}
+
+
+@app.post("/api/simulator/stop")
+async def stop_simulator():
+    """Stop the telemetry simulator."""
+    sim = get_simulator()
+    await sim.stop()
+    return {"status": "stopped"}
+
+
+@app.post("/api/simulator/command")
+async def simulator_command(request: CommandRequest):
+    """Send a command to the simulator."""
+    sim = get_simulator()
+    sim.handle_command(request.command, request.params)
+    return {"status": "ok", "command": request.command}

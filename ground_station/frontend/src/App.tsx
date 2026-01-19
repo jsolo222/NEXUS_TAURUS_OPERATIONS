@@ -24,6 +24,13 @@ interface Sensors {
   ultrasonic_cm: number
 }
 
+interface CSIPresence {
+  state: 'CLEAR' | 'PRESENCE' | 'MOVEMENT' | 'APPROACHING' | 'RETREATING'
+  confidence: number
+  variance: number
+  duration_ms: number
+}
+
 interface VehicleState {
   vehicle_id: string
   position: Position
@@ -41,6 +48,7 @@ interface VehicleState {
     right: number
   }
   sensors: Sensors
+  csi_presence?: CSIPresence
   system: {
     uptime_ms: number
     free_heap: number
@@ -53,11 +61,22 @@ interface VehicleState {
   updated_at: string
 }
 
+interface EventLogEntry {
+  timestamp: Date
+  level: 'INFO' | 'WARNING' | 'ERROR'
+  message: string
+}
+
 // WebSocket hook
 function useWebSocket(url: string) {
   const [isConnected, setIsConnected] = useState(false)
   const [vehicleState, setVehicleState] = useState<VehicleState | null>(null)
+  const [events, setEvents] = useState<EventLogEntry[]>([])
   const wsRef = useRef<WebSocket | null>(null)
+
+  const addEvent = (level: EventLogEntry['level'], message: string) => {
+    setEvents(prev => [...prev.slice(-99), { timestamp: new Date(), level, message }])
+  }
 
   useEffect(() => {
     const connect = () => {
@@ -67,12 +86,13 @@ function useWebSocket(url: string) {
       ws.onopen = () => {
         console.log('[WS] Connected')
         setIsConnected(true)
+        addEvent('INFO', 'Connected to ground station')
       }
 
       ws.onclose = () => {
         console.log('[WS] Disconnected')
         setIsConnected(false)
-        // Reconnect after 3 seconds
+        addEvent('WARNING', 'Disconnected from ground station')
         setTimeout(connect, 3000)
       }
 
@@ -80,32 +100,57 @@ function useWebSocket(url: string) {
         try {
           const data = JSON.parse(event.data)
           if (data.event === 'state_update') {
-            setVehicleState(data.state)
+            setVehicleState(prev => {
+              // Detect state changes for logging
+              if (prev && data.state) {
+                if (prev.armed !== data.state.armed) {
+                  addEvent('INFO', data.state.armed ? 'Vehicle ARMED' : 'Vehicle DISARMED')
+                }
+                if (prev.mode !== data.state.mode) {
+                  addEvent('INFO', `Mode changed to ${data.state.mode}`)
+                }
+                if (prev.csi_presence?.state !== data.state.csi_presence?.state) {
+                  const csi = data.state.csi_presence
+                  if (csi && csi.state !== 'CLEAR') {
+                    addEvent(csi.state === 'APPROACHING' ? 'WARNING' : 'INFO',
+                      `CSI: ${csi.state} (${(csi.confidence * 100).toFixed(0)}% confidence)`)
+                  }
+                }
+                if (data.state.battery?.percent < 20 && prev.battery?.percent >= 20) {
+                  addEvent('WARNING', 'Low battery warning')
+                }
+              }
+              return data.state
+            })
           } else if (data.event === 'initial_state') {
             const vehicles = data.vehicles
             const firstVehicle = Object.values(vehicles)[0] as VehicleState
             if (firstVehicle) {
               setVehicleState(firstVehicle)
+              addEvent('INFO', `Vehicle ${firstVehicle.vehicle_id} state received`)
             }
+          } else if (data.event === 'error') {
+            addEvent('ERROR', data.message || 'Unknown error')
           }
         } catch (e) {
           console.error('[WS] Parse error:', e)
         }
       }
 
-      ws.onerror = (error) => {
-        console.error('[WS] Error:', error)
+      ws.onerror = () => {
+        addEvent('ERROR', 'WebSocket error')
       }
     }
 
     connect()
+    addEvent('INFO', 'System initialized')
 
     return () => {
       wsRef.current?.close()
     }
   }, [url])
 
-  return { isConnected, vehicleState }
+  return { isConnected, vehicleState, events }
 }
 
 // Send command helper
@@ -271,6 +316,79 @@ function SensorDisplay({ sensors }: { sensors: Sensors }) {
   )
 }
 
+function CSIPresenceDisplay({ presence }: { presence?: CSIPresence }) {
+  if (!presence) return null
+
+  const stateColors: Record<string, string> = {
+    CLEAR: 'bg-status-green',
+    PRESENCE: 'bg-status-yellow',
+    MOVEMENT: 'bg-status-yellow',
+    APPROACHING: 'bg-status-red',
+    RETREATING: 'bg-nasa-blue',
+  }
+
+  const stateIcons: Record<string, string> = {
+    CLEAR: '✓',
+    PRESENCE: '👤',
+    MOVEMENT: '🚶',
+    APPROACHING: '⚠️',
+    RETREATING: '←',
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{stateIcons[presence.state] || '?'}</span>
+          <span className={`px-2 py-1 rounded text-sm font-medium ${stateColors[presence.state]} bg-opacity-20`}>
+            {presence.state}
+          </span>
+        </div>
+        <span className="text-lg font-bold">{(presence.confidence * 100).toFixed(0)}%</span>
+      </div>
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <div className="text-text-secondary">Variance</div>
+          <div className="font-mono">{presence.variance.toFixed(2)}</div>
+        </div>
+        <div>
+          <div className="text-text-secondary">Duration</div>
+          <div className="font-mono">{(presence.duration_ms / 1000).toFixed(1)}s</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EventLog({ events }: { events: EventLogEntry[] }) {
+  const logRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight
+    }
+  }, [events])
+
+  const levelColors: Record<string, string> = {
+    INFO: 'text-status-green',
+    WARNING: 'text-status-yellow',
+    ERROR: 'text-status-red',
+  }
+
+  return (
+    <div ref={logRef} className="h-48 overflow-y-auto text-xs font-mono space-y-1">
+      {events.map((event, i) => (
+        <div key={i} className={levelColors[event.level]}>
+          [{event.timestamp.toLocaleTimeString()}] {event.message}
+        </div>
+      ))}
+      {events.length === 0 && (
+        <div className="text-text-secondary">Waiting for events...</div>
+      )}
+    </div>
+  )
+}
+
 function formatUptime(ms: number): string {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -285,7 +403,7 @@ function formatUptime(ms: number): string {
 // Main App
 export default function App() {
   const wsUrl = `ws://${window.location.host}/ws/dashboard`
-  const { isConnected, vehicleState } = useWebSocket(wsUrl)
+  const { isConnected, vehicleState, events } = useWebSocket(wsUrl)
 
   return (
     <div className="min-h-screen bg-space-black p-4">
@@ -385,6 +503,12 @@ export default function App() {
               <SensorDisplay sensors={vehicleState.sensors} />
             </div>
 
+            {/* CSI Presence Detection */}
+            <div className="panel">
+              <div className="panel-header">WiFi Presence (CSI)</div>
+              <CSIPresenceDisplay presence={vehicleState.csi_presence} />
+            </div>
+
             {/* Motors */}
             <div className="panel">
               <div className="panel-header">Motor Output</div>
@@ -437,13 +561,10 @@ export default function App() {
               />
             </div>
 
-            {/* Telemetry Log (placeholder) */}
+            {/* Event Log */}
             <div className="panel flex-1">
               <div className="panel-header">Event Log</div>
-              <div className="h-48 overflow-y-auto text-xs font-mono text-text-secondary space-y-1">
-                <div>[{new Date().toLocaleTimeString()}] System initialized</div>
-                <div>[{new Date().toLocaleTimeString()}] Waiting for commands...</div>
-              </div>
+              <EventLog events={events} />
             </div>
           </div>
         </div>
