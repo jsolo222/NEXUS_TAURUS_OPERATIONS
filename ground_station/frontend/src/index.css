@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color: #e0e0e0;
+  background-color: #0a0a0f;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #12121a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
+
+/* Panel styles */
+@layer components {
+  .panel {
+    @apply bg-panel-dark border border-panel-border rounded-lg p-4;
+  }
+
+  .panel-header {
+    @apply text-xs uppercase tracking-wider text-text-secondary mb-3 font-semibold;
+  }
+
+  .status-indicator {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-indicator.connected {
+    @apply bg-status-green shadow-[0_0_8px_rgba(0,255,136,0.5)];
+  }
+
+  .status-indicator.disconnected {
+    @apply bg-status-red shadow-[0_0_8px_rgba(255,68,68,0.5)];
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded font-medium transition-all duration-150;
+  }
+
+  .btn-primary {
+    @apply bg-nasa-blue hover:bg-blue-700 text-white;
+  }
+
+  .btn-danger {
+    @apply bg-nasa-red hover:bg-red-700 text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-panel-border hover:bg-gray-700 text-text-primary;
+  }
+
+  .data-value {
+    @apply text-2xl font-bold text-white;
+  }
+
+  .data-unit {
+    @apply text-sm text-text-secondary ml-1;
+  }
+
+  .data-label {
+    @apply text-xs text-text-secondary uppercase tracking-wide;
+  }
+}
